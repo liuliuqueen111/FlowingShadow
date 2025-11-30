@@ -1,0 +1,6 @@
+
+{
+  "name": "SSR-Blog-AI-Pro",
+  "description": "A high-performance blog platform simulating SSR hydration, Redis caching strategies, and MySQL CRUD operations. Features a full-featured Admin CMS with ByteDance Doubao (Volcengine) powered AI Writing Assistant.",
+  "requestFramePermissions": []
+}

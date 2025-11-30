@@ -1,0 +1,154 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NextGen SSR Blog | AI Powered</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#f5f3ff', // Adjusted for Deep Space / Dark Matter theme light variants
+                100: '#ede9fe',
+                200: '#ddd6fe',
+                300: '#c4b5fd',
+                400: '#a78bfa',
+                500: '#8b5cf6', // Keeping Violet/Purple as primary
+                600: '#7c3aed',
+                700: '#6d28d9',
+                800: '#5b21b6',
+                900: '#4c1d95',
+              },
+              accent: {
+                500: '#10B981', // Dark Matter Green
+                600: '#059669',
+              },
+              darkbg: '#05050A' // Deep Space Black
+            },
+            animation: {
+              'blob': 'blob 7s infinite',
+              'fade-in': 'fadeIn 0.5s ease-out forwards',
+              'slide-up': 'slideUp 0.5s ease-out forwards',
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            },
+            keyframes: {
+              blob: {
+                '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                '100%': { transform: 'translate(0px, 0px) scale(1)' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { opacity: '0', transform: 'translateY(20px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              }
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+      
+      body {
+        font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(139, 92, 246, 0.3); 
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(139, 92, 246, 0.6); 
+      }
+
+      /* Circuit Board Pattern for Dark Mode Code Blocks */
+      .circuit-pattern {
+        background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%232e1065' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+      }
+
+      /* Markdown Styles */
+      .markdown-body h1 { font-size: 2.25em; font-weight: 800; margin-bottom: 0.8em; letter-spacing: -0.025em; color: inherit; }
+      .markdown-body h2 { font-size: 1.75em; font-weight: 700; margin-bottom: 0.6em; margin-top: 1.5em; letter-spacing: -0.025em; color: inherit; }
+      .markdown-body h3 { font-size: 1.5em; font-weight: 600; margin-bottom: 0.5em; margin-top: 1.2em; color: inherit; }
+      .markdown-body p { margin-bottom: 1.5em; line-height: 1.8; color: inherit; }
+      .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.5em; color: inherit; }
+      .markdown-body li { margin-bottom: 0.5em; }
+      .markdown-body blockquote { 
+        border-left: 3px solid #10B981; /* Accent Color */
+        padding: 0.8em 1.2em; 
+        background: rgba(16, 185, 129, 0.05); 
+        border-radius: 0 8px 8px 0;
+        margin-bottom: 1.5em;
+        font-style: italic;
+        color: inherit;
+        position: relative;
+      }
+      .markdown-body blockquote::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+        pointer-events: none;
+      }
+
+      .markdown-body code { 
+        background: rgba(0, 0, 0, 0.1); 
+        padding: 0.2em 0.4em; 
+        border-radius: 4px; 
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9em;
+        color: #d946ef; /* Pink-ish for visibility */
+      }
+      .dark .markdown-body code { color: #10B981; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05); }
+      
+      /* Utility for glass effect */
+      .glass {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .dark .glass {
+        background: rgba(5, 5, 10, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      
+      /* Dark Matter Text Glow */
+      .text-shadow-glow {
+        text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-gray-50 text-gray-900 dark:bg-[#05050A] dark:text-gray-100 transition-colors duration-500 antialiased selection:bg-brand-500 selection:text-white">
+    <div id="root"><!--ssr-outlet--></div>
+    <script type="module" src="/entry-client.tsx"></script>
+  </body>
+</html>
