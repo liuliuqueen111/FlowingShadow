@@ -1,4 +1,4 @@
-<img src="./flowiingshadow.png" alt="flowiingshadow" style="zoom:50%;" />
+<img src="./FlowingShadow.jpg" alt="flowiingshadow" style="zoom:50%;" />
 
 
 # 流影博客 
