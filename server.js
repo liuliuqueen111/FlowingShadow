@@ -338,14 +338,13 @@ async function createServer() {
         });
       }
 
-      // 异步增加阅读量
+      //增加阅读量
       articleService.incrementViews(id);
 
-      // 生成 ETag 用于协商缓存
+      // 生成 ETag
       const etag = generateETag(result.data);
       const lastModified = new Date(result.data.updatedAt).toUTCString();
-      
-      // 检查客户端缓存是否有效
+        
       if (checkETagMatch(req, etag)) {
         return res.status(304).end();
       }
@@ -484,7 +483,7 @@ async function createServer() {
         color: tag.color || '#3b82f6'
       }));
 
-      // 写入缓存（5分钟）
+      // 写入缓存
       await cacheService.set(cacheKey, formattedTags, 300);
 
       res.json({ data: formattedTags, source: 'L4_DB' });
@@ -499,7 +498,6 @@ async function createServer() {
     try {
       const { type, prompt, context, tags } = req.body;
 
-      // 没有配置豆包 API Key，返回模拟数据
       if (!process.env.ARK_API_KEY || !process.env.ARK_MODEL_ENDPOINT) {
         return res.json({
           text: `【本地模拟】类型: ${type}\n\n基于提示 "${prompt || '未提供'}" 生成的内容。`,
@@ -507,10 +505,10 @@ async function createServer() {
         });
       }
 
-      // 导入豆包服务
+      // 导入豆包
       const { generateBlogContent } = await import('./services/doubaoService.js');
 
-      // 调用豆包 AI 
+      // 调AI 
       const result = await generateBlogContent({
         type: type.toUpperCase(),
         prompt,
@@ -576,7 +574,6 @@ async function createServer() {
       // 注入初始数据脚本
       const initialDataScript = `<script>window.__INITIAL_DATA__ = ${JSON.stringify(initialData)};window.__SSR_DEGRADED__ = ${degraded};</script>`;
 
-      // 替换模板中的占位符
       let html = template
         .replace('<!--ssr-outlet-->', appHtml)
         .replace('</head>', `${initialDataScript}</head>`);

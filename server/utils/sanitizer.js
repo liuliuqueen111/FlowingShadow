@@ -85,28 +85,26 @@ export const sanitizeMarkdown = (markdown) => {
 
 /**
  * 清理文章数据对象
- * 注意：标题和摘要不需要 escapeHtml，因为 React 会自动处理 XSS
- * 只对 Markdown 内容进行恶意代码清理
  */
 export const sanitizeArticleData = (articleData) => {
   const sanitized = { ...articleData };
   
-  // 清理标题 - 只 trim，不转义（React 会处理）
+  // 清理标题 
   if (sanitized.title) {
     sanitized.title = sanitized.title.trim();
   }
   
-  // 清理摘要 - 只 trim，不转义
+  // 清理摘要 
   if (sanitized.excerpt) {
     sanitized.excerpt = sanitized.excerpt.trim();
   }
   
-  // 清理内容 - 移除危险的 HTML/JS
+  // 清理内容 
   if (sanitized.content) {
     sanitized.content = sanitizeMarkdown(sanitized.content);
   }
   
-  // 清理标签 - 只 trim，不转义
+  // 清理标签 
   if (sanitized.tags && Array.isArray(sanitized.tags)) {
     sanitized.tags = sanitized.tags
       .filter(tag => typeof tag === 'string')

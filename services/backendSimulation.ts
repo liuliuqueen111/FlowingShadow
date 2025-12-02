@@ -3,8 +3,6 @@ import { Article, ArticleStatus, SSRResponse, CacheLayer, RenderStrategy, System
 
 /**
  * 多级缓存: L1 (Memory) -> L2 (Redis) -> L4 (MySQL)
- * 当 DB/Redis 离线时的 Fallback 逻辑
- * 根据 UserAgent 决定返回 Full HTML 还是 Shell
  */
 
 const STORAGE_KEY = 'ssr_blog_db_v3';
@@ -30,8 +28,6 @@ const redisStore = new Map<string, { data: any; expires: number }>();
 const REDIS_TTL = 30000; // 30 seconds
 
 //  Layer 3: Static File (Simulated by a separate storage key) 
-// const staticCache = ... (Implied as fallback)
-
 const simulateLatency = async (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 //  Cache Managers 
@@ -131,7 +127,7 @@ const seedDB = (): Article[] => {
 const determineStrategy = (userType: SystemConfig['userType']): RenderStrategy => {
   if (userType === 'BOT') return 'SSR_FULL'; // 全量 SSR
   if (userType === 'USER_SLOW') return 'SSR_FULL'; // 慢网速
-  return 'SSR_HYBRID'; // 快网速/登录用户，Shell + CSR 补全
+  return 'SSR_HYBRID'; // 快网速/登录用户，Shell + CSR
 };
 
 // Public API 
@@ -182,7 +178,7 @@ export const fetchArticles = async (page: number = 1, limit: number = 10, tag: s
     const all = getDB();
     let published = all.filter(a => a.status === ArticleStatus.PUBLISHED).sort((a, b) => b.createdAt - a.createdAt);
     
-    // 标签筛选（模拟模式下按标签名称筛选）
+    // 标签筛选
     if (tag) {
       published = published.filter(a => a.tags && a.tags.some(t => t === tag || String(t).toLowerCase().includes(tag.toLowerCase())));
     }
@@ -222,7 +218,7 @@ export const fetchArticles = async (page: number = 1, limit: number = 10, tag: s
 
 // 获取标签列表
 export const fetchTags = async (): Promise<Tag[]> => {
-  // 优先调用后端 API
+  // 调用后端 API
   try {
     const resp = await fetch('/api/tags');
     if (resp.ok) {
@@ -233,7 +229,7 @@ export const fetchTags = async (): Promise<Tag[]> => {
     // fallback to simulation
   }
 
-  // 模拟模式：从文章中提取标签
+  // 文章中提取标签
   try {
     const all = getDB();
     const tagMap = new Map<string, number>();
@@ -298,7 +294,6 @@ export const fetchArticleById = async (id: string): Promise<SSRResponse<Article>
     
     if (!article) throw new Error("Not Found");
 
-    // Side effect: increment views 
     article.views++;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
 

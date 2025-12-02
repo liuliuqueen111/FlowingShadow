@@ -4,8 +4,7 @@ const API_URL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
 
 export const generateBlogContent = async (request) => {
   const apiKey = process.env.ARK_API_KEY;
-  // 豆包模型需要具体的 Endpoint ID (例如 ep-20240604123456-abcde)
-  // 用户需要在环境变量中提供此 ID
+  // 豆包模型需要具体的 Endpoint ID
   const modelEndpoint = process.env.ARK_MODEL_ENDPOINT;
 
   if (!apiKey || !modelEndpoint) {

@@ -99,7 +99,7 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
       let response: SSRResponse<any>;
       
       if (adminMode && isAuthenticated) {
-        // 获取用户的所有文章（包括草稿）
+        // 获取用户的所有文章
         const params = new URLSearchParams({
           page: String(page),
           limit: String(pageSize)
@@ -194,7 +194,7 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
 
   const handleSave = async (data: Partial<Article>) => {
     try {
-      // 尝试保存（若后端返回非 2xx 会抛错）
+      // 尝试保存
       await saveArticle({ ...data, id: currentArticle?.id }, user?.id);
     } catch (e: any) {
       // 显示后端错误信息（如果有），否则显示默认提示
@@ -202,21 +202,17 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
       alert(`保存失败：${msg}`);
       return; // 不继续执行后续的流程
     }
-
-    // 保存成功：切换到后台页面（管理员视图），不自动刷新文章列表。
-    // 用户可以在后台手动刷新或切换到探索页以触发列表重载。
+    // 保存成功切换到后台页面
     setView('LIST');
     setActiveTab('ADMIN');
 
     setSaveNotice('文章已保存。若要查看，请手动刷新文章列表或切换到探索页。');
     // 自动关闭提示 6 秒
     setTimeout(() => setSaveNotice(null), 6000);
-    // 保存后：尝试刷新后台列表（如果失败，提示但不回滚保存）
     try {
       await loadList(true);
     } catch (err) {
       console.error('后台列表刷新失败:', err);
-      // 给用户温和提示，但不视为保存失败
       setSaveNotice('文章已保存，但刷新后台列表失败，请手动刷新。');
       setTimeout(() => setSaveNotice(null), 6000);
     }
@@ -229,10 +225,10 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
     }
     setActiveTab(tab);
     setView('LIST');
-    // 重置分页和筛选状态
+    // 重置分页和筛选
     setCurrentPage(1);
     setSelectedTag(null);
-    // 切换标签页时重新加载列表
+
     loadList(tab === 'ADMIN', 1, null);
   };
 
@@ -243,7 +239,7 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 处理标签筛选变化
+  // 标签筛选变化
   const handleTagChange = (tagId: string | null) => {
     setSelectedTag(tagId);
     setCurrentPage(1); // 重置到第一页
@@ -252,7 +248,6 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
 
   // Initial Load 
   useEffect(() => {
-    // 加载标签列表
     loadTags();
     
     if (!initialData?.articles || initialData.articles.length === 0) {
@@ -264,12 +259,10 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
     }
   }, [loadList, loadTags, initialData, pageSize]);
 
-  // 当用户登录后，像点击"探索"一样从后端拉取最新的文章列表（避免刷新时仍显示本地回退数据）
+  // 用户登录后拉取文章
   const prevAuthRef = React.useRef<boolean>(false);
   useEffect(() => {
-    // 只有在从未认证 -> 已认证 的变更时触发
     if (!prevAuthRef.current && isAuthenticated) {
-      // 主动从后端重新加载探索列表
       loadList(false, 1, null).catch(err => console.error('登录后刷新探索列表失败:', err));
     }
     prevAuthRef.current = isAuthenticated;
@@ -288,15 +281,12 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
         </p>
       </div>
 
-      {/* 标签筛选 */}
       <TagFilter
         tags={tags}
         selectedTag={selectedTag}
         onTagChange={handleTagChange}
         loading={tagsLoading}
       />
-
-      {/* 文章统计 */}
       {!loading && !error && (
         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
           <span>
@@ -361,7 +351,6 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
             ))}
           </div>
           
-          {/* 分页组件 */}
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}

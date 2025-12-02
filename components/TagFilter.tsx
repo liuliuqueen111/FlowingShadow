@@ -1,6 +1,5 @@
 /**
  * 标签筛选组件
- * 显示可选标签列表，支持单选筛选
  */
 
 import React from 'react';

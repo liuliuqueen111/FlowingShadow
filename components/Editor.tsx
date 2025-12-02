@@ -64,7 +64,6 @@ const Editor: React.FC<Props> = ({ initialData, onSave, onCancel }) => {
   const validateForm = () => {
     const newErrors: typeof errors = {};
     
-    // 标题验证
     if (!formData.title?.trim()) {
       newErrors.title = '标题不能为空';
     } else if (formData.title.trim().length < 2) {
@@ -72,8 +71,7 @@ const Editor: React.FC<Props> = ({ initialData, onSave, onCancel }) => {
     } else if (formData.title.trim().length > 200) {
       newErrors.title = '标题不能超过 200 个字符';
     }
-    
-    // 内容验证
+
     if (!formData.content?.trim()) {
       newErrors.content = '内容不能为空';
     } else if (formData.content.trim().length < 10) {
@@ -84,14 +82,13 @@ const Editor: React.FC<Props> = ({ initialData, onSave, onCancel }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // 实时验证（当字段被触碰后）
+  // 实时验证
   React.useEffect(() => {
     if (touched.title || touched.content) {
       validateForm();
     }
   }, [formData.title, formData.content, touched]);
 
-  // 检查表单是否有效
   const isFormValid = () => {
     return formData.title?.trim() && 
            formData.title.trim().length >= 2 && 
@@ -125,8 +122,7 @@ const Editor: React.FC<Props> = ({ initialData, onSave, onCancel }) => {
       let context = '';
       
       // 根据不同类型组装提示词
-      if (type === 'TITLE') {
-        // 优先使用标题栏内容作为主题，其次用正文内容，最后用分类
+      if (type === 'TITLE') {       
         const titleHint = formData.title?.trim();
         const contentHint = formData.content?.substring(0, 500)?.trim();
         prompt = titleHint || contentHint || formData.category || "技术博客";
