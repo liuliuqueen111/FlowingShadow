@@ -1,0 +1,180 @@
+﻿
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0"
+  }
+}
+</script>
+    <script type="module">import { injectIntoGlobalHook } from "/@react-refresh";
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;</script>
+
+    <script type="module" src="/@vite/client"></script>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NextGen SSR Blog | AI Powered</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#f5f3ff', // Adjusted for Deep Space / Dark Matter theme light variants
+                100: '#ede9fe',
+                200: '#ddd6fe',
+                300: '#c4b5fd',
+                400: '#a78bfa',
+                500: '#8b5cf6', // Keeping Violet/Purple as primary
+                600: '#7c3aed',
+                700: '#6d28d9',
+                800: '#5b21b6',
+                900: '#4c1d95',
+              },
+              accent: {
+                500: '#10B981', // Dark Matter Green
+                600: '#059669',
+              },
+              darkbg: '#05050A' // Deep Space Black
+            },
+            animation: {
+              'blob': 'blob 7s infinite',
+              'fade-in': 'fadeIn 0.5s ease-out forwards',
+              'slide-up': 'slideUp 0.5s ease-out forwards',
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            },
+            keyframes: {
+              blob: {
+                '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                '100%': { transform: 'translate(0px, 0px) scale(1)' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { opacity: '0', transform: 'translateY(20px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              }
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+      
+      body {
+        font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+      }
+      
+      /* Custom Scrollbar */
+      
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      
+      ::-webkit-scrollbar-thumb {
+        background: rgba(139, 92, 246, 0.3); 
+        border-radius: 10px;
+      }
+      
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(139, 92, 246, 0.6); 
+      }
+      
+      /* Circuit Board Pattern for Dark Mode Code Blocks */
+      
+      .circuit-pattern {
+        background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%232e1065' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+      }
+      
+      /* Markdown Styles */
+      
+      .markdown-body h1 { font-size: 2.25em; font-weight: 800; margin-bottom: 0.8em; letter-spacing: -0.025em; color: inherit; }
+      
+      .markdown-body h2 { font-size: 1.75em; font-weight: 700; margin-bottom: 0.6em; margin-top: 1.5em; letter-spacing: -0.025em; color: inherit; }
+      
+      .markdown-body h3 { font-size: 1.5em; font-weight: 600; margin-bottom: 0.5em; margin-top: 1.2em; color: inherit; }
+      
+      .markdown-body p { margin-bottom: 1.5em; line-height: 1.8; color: inherit; }
+      
+      .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.5em; color: inherit; }
+      
+      .markdown-body li { margin-bottom: 0.5em; }
+      
+      .markdown-body blockquote { 
+        border-left: 3px solid #10B981; /* Accent Color */
+        padding: 0.8em 1.2em; 
+        background: rgba(16, 185, 129, 0.05); 
+        border-radius: 0 8px 8px 0;
+        margin-bottom: 1.5em;
+        font-style: italic;
+        color: inherit;
+        position: relative;
+      }
+      
+      .markdown-body blockquote::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+        pointer-events: none;
+      }
+      
+      .markdown-body code { 
+        background: rgba(0, 0, 0, 0.1); 
+        padding: 0.2em 0.4em; 
+        border-radius: 4px; 
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9em;
+        color: #d946ef; /* Pink-ish for visibility */
+      }
+      
+      .dark .markdown-body code { color: #10B981; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05); }
+      
+      /* Utility for glass effect */
+      
+      .glass {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      
+      .dark .glass {
+        background: rgba(5, 5, 10, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      
+      /* Dark Matter Text Glow */
+      
+      .text-shadow-glow {
+        text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+      }
+    </style>
+
+<script>window.__INITIAL_DATA__ = {"articles":[{"id":"1","title":"创建文章","slug":"创建文章-miltevx6","excerpt":"","content":"测试","coverImage":"/uploads/cover-1764512883144-491298653.jpg","status":"PUBLISHED","views":0,"likes":0,"author":"liuliu","authorId":2,"authorAvatar":null,"category":"未分类","tags":[],"createdAt":1764512885000,"updatedAt":1764512885000,"publishedAt":1764512885000}],"total":1};window.__SSR_DEGRADED__ = false;</script></head>
+  <body class="bg-gray-50 text-gray-900 dark:bg-[#05050A] dark:text-gray-100 transition-colors duration-500 antialiased selection:bg-brand-500 selection:text-white">
+    <div id="root"><div class="min-h-screen flex flex-col relative overflow-hidden bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100 transition-colors duration-500"><div class="fixed inset-0 z-0 pointer-events-none overflow-hidden"><div class="absolute top-0 left-1/4 w-96 h-96 bg-purple-300 dark:bg-purple-900/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-30 animate-blob"></div><div class="absolute top-0 right-1/4 w-96 h-96 bg-blue-300 dark:bg-blue-900/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div><div class="absolute -bottom-32 left-1/3 w-96 h-96 bg-pink-300 dark:bg-pink-900/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div></div><header class="fixed top-0 w-full z-50 transition-all duration-300 bg-transparent py-4"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between"><div class="flex items-center space-x-3 cursor-pointer group"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-accent-600 flex items-center justify-center text-white shadow-lg transform group-hover:rotate-6 transition-transform"><span class="font-bold text-lg font-serif italic">F</span></div><div class="flex flex-col"><span class="text-xl font-bold tracking-tight text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors font-serif">流影<span class="font-light">博客</span></span><span class="text-[10px] uppercase tracking-widest text-gray-500 dark:text-gray-400 font-semibold">Flowing Shadow</span></div></div><div class="flex items-center space-x-4"><nav class="hidden md:flex bg-gray-100/50 dark:bg-slate-800/50 backdrop-blur-sm p-1.5 rounded-full border border-gray-200/50 dark:border-white/5"><button class="px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-300 bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm scale-105">探索</button><button class="px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-300 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200">后台</button></nav><div class="flex items-center space-x-3"><button class="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-brand-600 to-accent-600 hover:from-brand-500 hover:to-accent-500 rounded-lg shadow-lg shadow-brand-500/30 transition-all">登录</button><button class="w-10 h-10 rounded-full flex items-center justify-center text-gray-500 bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 transition-all border border-gray-200/50 dark:border-white/10 shadow-sm" aria-label="Toggle Dark Mode">🌞</button></div></div></div></header><main class="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 z-10"><div class="space-y-8 animate-slide-up"><div class="text-center mb-12 relative"><h1 class="text-5xl md:text-7xl font-serif font-black text-gray-900 dark:text-white mb-6 tracking-tight relative z-10">Flowing <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-accent-500">Shadow</span></h1><p class="text-lg md:text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto font-light leading-relaxed">繁华之外，静观流影。</p></div><div class="flex flex-wrap gap-2 mb-6 animate-pulse"><div class="h-8 w-20 bg-gray-200 dark:bg-slate-700 rounded-full"></div><div class="h-8 w-20 bg-gray-200 dark:bg-slate-700 rounded-full"></div><div class="h-8 w-20 bg-gray-200 dark:bg-slate-700 rounded-full"></div><div class="h-8 w-20 bg-gray-200 dark:bg-slate-700 rounded-full"></div><div class="h-8 w-20 bg-gray-200 dark:bg-slate-700 rounded-full"></div></div><div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400"><span>共 <span class="font-medium">1</span> 篇文章</span></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"><div class="group relative flex flex-col h-full bg-white/70 dark:bg-slate-800/70 border border-white/20 dark:border-white/5 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 hover:bg-white/90 dark:hover:bg-slate-800/90 backdrop-blur-sm"><div class="relative h-48 overflow-hidden"><div class="absolute inset-0 bg-gray-200 dark:bg-slate-700 animate-pulse"></div><img src="/uploads/cover-1764512883144-491298653.jpg" alt="创建文章" class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-out" loading="lazy"/><div class="absolute top-4 left-4"><span class="px-3 py-1 text-xs font-bold text-white bg-black/30 backdrop-blur-md border border-white/20 rounded-full shadow-sm">未分类</span></div></div><div class="p-6 flex flex-col flex-grow relative z-10"><div class="flex flex-wrap gap-2 mb-3"></div><h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 leading-tight group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">创建文章</h3><p class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-3 flex-grow leading-relaxed"></p><div class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-white/5 text-xs text-gray-500 dark:text-gray-500"><div class="flex items-center space-x-2"><div class="w-6 h-6 rounded-full bg-gradient-to-tr from-brand-400 to-purple-500 flex items-center justify-center text-white font-bold text-[10px]">l</div><span>liuliu</span></div><div class="flex items-center space-x-3"><span class="flex items-center space-x-1"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>11月30日</span></span><span class="flex items-center space-x-1"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><span>0</span></span></div></div></div></div></div></div></main><div class="fixed bottom-6 left-6 z-50"><button class="w-12 h-12 rounded-full shadow-2xl flex items-center justify-center transition-all bg-white dark:bg-slate-800 text-gray-500">⚙️</button></div><footer class="border-t border-gray-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md py-12 z-10 mt-12"><div class="max-w-7xl mx-auto px-4 text-center"><p class="text-gray-500 dark:text-gray-400 text-sm">© 2025 Flowing Shadow Blog. Powered by simulated SSR &amp; ByteDance Doubao (Volcengine).</p></div></footer></div></div>
+    <script type="module" src="/entry-client.tsx"></script>
+  </body>
+</html>
+

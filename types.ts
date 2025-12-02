@@ -47,3 +47,12 @@ export interface SystemConfig {
   dbOnline: boolean;
   userType: 'BOT' | 'USER_FAST' | 'USER_SLOW'; // 模拟不同用户以触发混合渲染
 }
+
+// 标签类型
+export interface Tag {
+  id: number | string;
+  name: string;
+  slug?: string;
+  color?: string;
+  count?: number;
+}

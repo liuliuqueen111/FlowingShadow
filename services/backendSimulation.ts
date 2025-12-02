@@ -1,5 +1,5 @@
 
-import { Article, ArticleStatus, SSRResponse, CacheLayer, RenderStrategy, SystemConfig } from '../types';
+import { Article, ArticleStatus, SSRResponse, CacheLayer, RenderStrategy, SystemConfig, Tag } from '../types';
 
 /**
  * 多级缓存: L1 (Memory) -> L2 (Redis) -> L4 (MySQL)
@@ -136,7 +136,7 @@ const determineStrategy = (userType: SystemConfig['userType']): RenderStrategy =
 
 // Public API 
 
-export const fetchArticles = async (page: number = 1, limit: number = 10): Promise<SSRResponse<{ articles: Article[], total: number }>> => {
+export const fetchArticles = async (page: number = 1, limit: number = 10, tag: string | null = null): Promise<SSRResponse<{ articles: Article[], total: number, totalPages: number }>> => {
   // Prefer real backend API when available (SSR server). Fallback to in-browser simulation.
   try {
     const token = localStorage.getItem('auth_token');
@@ -145,16 +145,22 @@ export const fetchArticles = async (page: number = 1, limit: number = 10): Promi
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const resp = await fetch(`/api/articles?page=${page}&limit=${limit}`, { headers });
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit)
+    });
+    if (tag) params.append('tag', tag);
+
+    const resp = await fetch(`/api/articles?${params}`, { headers });
     if (resp.ok) {
       const json = await resp.json();
-      return json as SSRResponse<{ articles: Article[], total: number }>;
+      return json as SSRResponse<{ articles: Article[], total: number, totalPages: number }>;
     }
   } catch (e) {
     // network fail -> fallback to simulation below
   }
 
-  const cacheKey = `articles_p${page}_l${limit}`;
+  const cacheKey = `articles_p${page}_l${limit}_t${tag || 'all'}`;
   const start = Date.now();
 
   // Strategy Decision
@@ -174,10 +180,19 @@ export const fetchArticles = async (page: number = 1, limit: number = 10): Promi
   try {
     await simulateLatency(systemConfig.dbOnline ? 300 : 100); // DB latency simulation
     const all = getDB();
-    const published = all.filter(a => a.status === ArticleStatus.PUBLISHED).sort((a, b) => b.createdAt - a.createdAt);
+    let published = all.filter(a => a.status === ArticleStatus.PUBLISHED).sort((a, b) => b.createdAt - a.createdAt);
+    
+    // 标签筛选（模拟模式下按标签名称筛选）
+    if (tag) {
+      published = published.filter(a => a.tags && a.tags.some(t => t === tag || String(t).toLowerCase().includes(tag.toLowerCase())));
+    }
+    
+    const total = published.length;
+    const totalPages = Math.ceil(total / limit);
     const result = { 
       articles: published.slice((page - 1) * limit, page * limit), 
-      total: published.length 
+      total,
+      totalPages
     };
 
     setL1(cacheKey, result);
@@ -194,7 +209,7 @@ export const fetchArticles = async (page: number = 1, limit: number = 10): Promi
 
   } catch (e) {
     return { 
-      data: { articles: [], total: 0 }, 
+      data: { articles: [], total: 0, totalPages: 0 }, 
       serverGeneratedTime: Date.now(), 
       source: 'NONE', 
       latency: Date.now() - start, 
@@ -202,6 +217,44 @@ export const fetchArticles = async (page: number = 1, limit: number = 10): Promi
       degraded: true,
       error: "Service Degradation: Database Unavailable"
     };
+  }
+};
+
+// 获取标签列表
+export const fetchTags = async (): Promise<Tag[]> => {
+  // 优先调用后端 API
+  try {
+    const resp = await fetch('/api/tags');
+    if (resp.ok) {
+      const json = await resp.json();
+      return json.data || [];
+    }
+  } catch (e) {
+    // fallback to simulation
+  }
+
+  // 模拟模式：从文章中提取标签
+  try {
+    const all = getDB();
+    const tagMap = new Map<string, number>();
+    
+    all.forEach(article => {
+      if (article.tags && article.status === ArticleStatus.PUBLISHED) {
+        article.tags.forEach(tag => {
+          tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
+        });
+      }
+    });
+    
+    const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+    return Array.from(tagMap.entries()).map(([name, count], index) => ({
+      id: name,
+      name,
+      count,
+      color: colors[index % colors.length]
+    }));
+  } catch (e) {
+    return [];
   }
 };
 

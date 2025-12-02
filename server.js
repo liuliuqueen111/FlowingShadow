@@ -24,12 +24,23 @@ process.on('unhandledRejection', (reason) => {
 });
 
 // 服务端模块
-import { sequelize } from './server/models/index.js';
+import { sequelize, Tag } from './server/models/index.js';
 import cacheService from './server/services/cacheService.js';
 import articleService from './server/services/articleService.js';
 import AuthService from './server/services/authService.js';
 import { authenticate, optionalAuthenticate, authorize, checkOwnership } from './server/middleware/auth.js';
 import { apiLimiter, authLimiter, uploadLimiter, aiLimiter } from './server/middleware/rateLimiter.js';
+import {
+  validateArticleCreate,
+  validateArticleUpdate,
+  validateArticleDelete,
+  validateBatchDelete,
+  validatePagination,
+  validateRegister,
+  validateLogin,
+  validateAIGenerate
+} from './server/middleware/validation.js';
+import { sanitizeArticleData, generateETag, checkETagMatch } from './server/utils/sanitizer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProduction = process.env.NODE_ENV === 'production';
@@ -148,23 +159,9 @@ async function createServer() {
 
 
   // 用户注册
-  app.post('/api/auth/register', authLimiter, async (req, res) => {
+  app.post('/api/auth/register', authLimiter, validateRegister, async (req, res) => {
     try {
       const { username, email, password } = req.body;
-
-      if (!username || !email || !password) {
-        return res.status(400).json({
-          ok: false,
-          error: '用户名、邮箱和密码都是必需的'
-        });
-      }
-
-      if (password.length < 6) {
-        return res.status(400).json({
-          ok: false,
-          error: '密码长度至少6位'
-        });
-      }
 
       const result = await AuthService.register({ username, email, password });
       res.status(201).json({ ok: true, ...result });
@@ -175,16 +172,9 @@ async function createServer() {
   });
 
   // 用户登录
-  app.post('/api/auth/login', authLimiter, async (req, res) => {
+  app.post('/api/auth/login', authLimiter, validateLogin, async (req, res) => {
     try {
       const { username, password } = req.body;
-
-      if (!username || !password) {
-        return res.status(400).json({
-          ok: false,
-          error: '用户名和密码都是必需的'
-        });
-      }
 
       const result = await AuthService.login({ username, password });
       res.json({ ok: true, ...result });
@@ -351,10 +341,26 @@ async function createServer() {
       // 异步增加阅读量
       articleService.incrementViews(id);
 
+      // 生成 ETag 用于协商缓存
+      const etag = generateETag(result.data);
+      const lastModified = new Date(result.data.updatedAt).toUTCString();
+      
+      // 检查客户端缓存是否有效
+      if (checkETagMatch(req, etag)) {
+        return res.status(304).end();
+      }
+      
+      // 检查 If-Modified-Since
+      const ifModifiedSince = req.headers['if-modified-since'];
+      if (ifModifiedSince && new Date(ifModifiedSince) >= new Date(result.data.updatedAt)) {
+        return res.status(304).end();
+      }
+
       res.setHeader('X-Cache', result.source === 'L2_REDIS' ? 'HIT' : 'MISS');
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
+      res.setHeader('ETag', etag);
+      res.setHeader('Last-Modified', lastModified);
+      // 允许客户端缓存，但需要重新验证
+      res.setHeader('Cache-Control', 'private, max-age=0, must-revalidate');
 
       res.json({
         data: result.data,
@@ -376,15 +382,18 @@ async function createServer() {
   });
 
   // 创建文章
-  app.post('/api/articles', authenticate, async (req, res) => {
+  app.post('/api/articles', authenticate, validateArticleCreate, async (req, res) => {
     try {
       if (!dbConnected) {
         return res.status(503).json({ ok: false, error: 'Database unavailable' });
       }
 
+      // 清理输入数据
+      const sanitizedData = sanitizeArticleData(req.body);
+      
       // 添加作者信息
       const articleData = {
-        ...req.body,
+        ...sanitizedData,
         author_id: req.user.id
       };
 
@@ -397,13 +406,15 @@ async function createServer() {
   });
 
   // 更新文章
-  app.put('/api/articles/:id', authenticate, checkOwnership('article'), async (req, res) => {
+  app.put('/api/articles/:id', authenticate, validateArticleUpdate, checkOwnership('article'), async (req, res) => {
     try {
       if (!dbConnected) {
         return res.status(503).json({ ok: false, error: 'Database unavailable' });
       }
 
-      const result = await articleService.update(req.params.id, req.body);
+      // 清理输入数据
+      const sanitizedData = sanitizeArticleData(req.body);
+      const result = await articleService.update(req.params.id, sanitizedData);
       res.json(result);
     } catch (error) {
       console.error('更新文章失败:', error);
@@ -412,7 +423,7 @@ async function createServer() {
   });
 
   // 删除文章
-  app.delete('/api/articles/:id', authenticate, checkOwnership('article'), async (req, res) => {
+  app.delete('/api/articles/:id', authenticate, validateArticleDelete, checkOwnership('article'), async (req, res) => {
     try {
       if (!dbConnected) {
         return res.status(503).json({ ok: false, error: 'Database unavailable' });
@@ -428,7 +439,7 @@ async function createServer() {
   });
 
   // 批量删除
-  app.post('/api/articles/batch-delete', authenticate, authorize('editor'), async (req, res) => {
+  app.post('/api/articles/batch-delete', authenticate, validateBatchDelete, authorize('editor'), async (req, res) => {
     try {
       if (!dbConnected) {
         return res.status(503).json({ ok: false, error: 'Database unavailable' });
@@ -443,8 +454,48 @@ async function createServer() {
     }
   });
 
+  // 标签列表 API
+  app.get('/api/tags', async (req, res) => {
+    try {
+      if (!dbConnected) {
+        return res.status(503).json({
+          data: [],
+          error: 'Database unavailable'
+        });
+      }
+
+      // 尝试从缓存获取
+      const cacheKey = 'tags:list';
+      const cached = await cacheService.get(cacheKey);
+      if (cached) {
+        return res.json({ data: cached, source: 'L2_REDIS' });
+      }
+
+      // 从数据库获取标签及文章计数
+      const tags = await Tag.findAll({
+        attributes: ['id', 'name', 'slug', 'color'],
+        order: [['name', 'ASC']]
+      });
+
+      const formattedTags = tags.map(tag => ({
+        id: tag.id,
+        name: tag.name,
+        slug: tag.slug,
+        color: tag.color || '#3b82f6'
+      }));
+
+      // 写入缓存（5分钟）
+      await cacheService.set(cacheKey, formattedTags, 300);
+
+      res.json({ data: formattedTags, source: 'L4_DB' });
+    } catch (error) {
+      console.error('获取标签列表失败:', error);
+      res.status(500).json({ data: [], error: error.message });
+    }
+  });
+
   // AI 生成接口
-  app.post('/api/ai/generate', aiLimiter, async (req, res) => {
+  app.post('/api/ai/generate', aiLimiter, validateAIGenerate, async (req, res) => {
     try {
       const { type, prompt, context, tags } = req.body;
 

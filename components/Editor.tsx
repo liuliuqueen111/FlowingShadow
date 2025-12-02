@@ -29,6 +29,91 @@ const Editor: React.FC<Props> = ({ initialData, onSave, onCancel }) => {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
   const [showTitleSelector, setShowTitleSelector] = useState(false);
+  const [availableTags, setAvailableTags] = useState<Array<{id: string; name: string; color: string}>>([]);
+  const [loadingTags, setLoadingTags] = useState(true);
+
+  // 加载预设标签
+  React.useEffect(() => {
+    const loadTags = async () => {
+      try {
+        const resp = await fetch('/api/tags');
+        if (resp.ok) {
+          const data = await resp.json();
+          setAvailableTags(data.data || []);
+        }
+      } catch (e) {
+        console.error('加载标签失败:', e);
+      } finally {
+        setLoadingTags(false);
+      }
+    };
+    loadTags();
+  }, []);
+  
+  // 表单验证状态
+  const [errors, setErrors] = useState<{
+    title?: string;
+    content?: string;
+  }>({});
+  const [touched, setTouched] = useState<{
+    title?: boolean;
+    content?: boolean;
+  }>({});
+
+  // 验证规则
+  const validateForm = () => {
+    const newErrors: typeof errors = {};
+    
+    // 标题验证
+    if (!formData.title?.trim()) {
+      newErrors.title = '标题不能为空';
+    } else if (formData.title.trim().length < 2) {
+      newErrors.title = '标题至少需要 2 个字符';
+    } else if (formData.title.trim().length > 200) {
+      newErrors.title = '标题不能超过 200 个字符';
+    }
+    
+    // 内容验证
+    if (!formData.content?.trim()) {
+      newErrors.content = '内容不能为空';
+    } else if (formData.content.trim().length < 10) {
+      newErrors.content = '内容至少需要 10 个字符';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // 实时验证（当字段被触碰后）
+  React.useEffect(() => {
+    if (touched.title || touched.content) {
+      validateForm();
+    }
+  }, [formData.title, formData.content, touched]);
+
+  // 检查表单是否有效
+  const isFormValid = () => {
+    return formData.title?.trim() && 
+           formData.title.trim().length >= 2 && 
+           formData.content?.trim() && 
+           formData.content.trim().length >= 10;
+  };
+
+  // 获取验证提示信息
+  const getValidationSummary = () => {
+    const issues: string[] = [];
+    if (!formData.title?.trim()) {
+      issues.push('请输入标题');
+    } else if (formData.title.trim().length < 2) {
+      issues.push('标题至少 2 个字符');
+    }
+    if (!formData.content?.trim()) {
+      issues.push('请输入内容');
+    } else if (formData.content.trim().length < 10) {
+      issues.push(`内容还需 ${10 - formData.content.trim().length} 个字符`);
+    }
+    return issues;
+  };
 
   const handleAI = async (type: AICompletionRequest['type']) => {
     setAiLoading(true);
@@ -127,7 +212,14 @@ const Editor: React.FC<Props> = ({ initialData, onSave, onCancel }) => {
   const { user, hasRole } = useAuth();
 
   const handleSave = async (publishNow: boolean = true) => {
-    if (!formData.title) return alert("标题不能为空");
+    // 标记所有字段为已触碰
+    setTouched({ title: true, content: true });
+    
+    // 验证表单
+    if (!validateForm()) {
+      return; // 验证失败，不提交
+    }
+    
     setIsSaving(true);
     try {
       // 如果是在编辑已有文章，先做客户端的 ownership 校验，避免 403
@@ -209,24 +301,50 @@ const Editor: React.FC<Props> = ({ initialData, onSave, onCancel }) => {
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">豆包 Doubao-Pro 深度驱动</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex items-center space-x-3">
+          {/* 验证提示 */}
+          {!isFormValid() && (
+            <div className="hidden sm:flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span>{getValidationSummary().join(' · ')}</span>
+            </div>
+          )}
+          
           <button onClick={onCancel} className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
             取消
           </button>
-          <button 
-            onClick={() => handleSave(false)} 
-            disabled={isSaving}
-            className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-xl transition-colors disabled:opacity-50"
-          >
-            存为草稿
-          </button>
-          <button 
-            onClick={() => handleSave(true)} 
-            disabled={isSaving}
-            className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-brand-600 to-accent-600 hover:from-brand-500 hover:to-accent-500 rounded-xl shadow-lg shadow-brand-500/30 disabled:opacity-50 flex items-center gap-2 transform active:scale-95 transition-all"
-          >
-            {isSaving ? '保存中...' : '🚀 立即发布'}
-          </button>
+          <div className="relative group">
+            <button 
+              onClick={() => handleSave(false)} 
+              disabled={isSaving || !isFormValid()}
+              className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              存为草稿
+            </button>
+            {!isFormValid() && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                {getValidationSummary().join('，')}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+              </div>
+            )}
+          </div>
+          <div className="relative group">
+            <button 
+              onClick={() => handleSave(true)} 
+              disabled={isSaving || !isFormValid()}
+              className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-brand-600 to-accent-600 hover:from-brand-500 hover:to-accent-500 rounded-xl shadow-lg shadow-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2 transform active:scale-95 transition-all"
+            >
+              {isSaving ? '保存中...' : '🚀 立即发布'}
+            </button>
+            {!isFormValid() && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                {getValidationSummary().join('，')}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -239,13 +357,30 @@ const Editor: React.FC<Props> = ({ initialData, onSave, onCancel }) => {
                 type="text" 
                 value={formData.title} 
                 onChange={e => setFormData(prev => ({...prev, title: e.target.value}))}
-                className="w-full text-4xl font-extrabold bg-transparent border-none placeholder-gray-300 dark:placeholder-slate-600 text-gray-900 dark:text-white focus:ring-0 px-0 font-serif"
+                onBlur={() => setTouched(prev => ({ ...prev, title: true }))}
+                className={`w-full text-4xl font-extrabold bg-transparent border-none placeholder-gray-300 dark:placeholder-slate-600 text-gray-900 dark:text-white focus:ring-0 px-0 font-serif ${touched.title && errors.title ? 'text-red-500' : ''}`}
                 placeholder="请输入文章标题..."
               />
+              {/* 标题字数统计和错误提示 */}
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-2">
+                  {touched.title && errors.title && (
+                    <span className="text-xs text-red-500 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {errors.title}
+                    </span>
+                  )}
+                </div>
+                <span className={`text-xs ${(formData.title?.length || 0) > 200 ? 'text-red-500' : 'text-gray-400'}`}>
+                  {formData.title?.length || 0}/200
+                </span>
+              </div>
               <button 
                 onClick={() => handleAI('TITLE')}
                 disabled={aiLoading}
-                className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-lg text-xs font-bold flex items-center gap-1"
+                className="absolute right-0 top-3 opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-lg text-xs font-bold flex items-center gap-1"
               >
                 {activeAITool === 'TITLE' ? '...' : '✨ 豆包拟题'}
               </button>
@@ -282,9 +417,14 @@ const Editor: React.FC<Props> = ({ initialData, onSave, onCancel }) => {
           </div>
 
           {/* Content Area */}
-          <div className="relative rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-inner min-h-[600px] flex flex-col">
+          <div className={`relative rounded-2xl bg-white dark:bg-slate-800 border ${touched.content && errors.content ? 'border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-slate-700'} shadow-inner min-h-[600px] flex flex-col`}>
             <div className="flex items-center gap-2 p-2 border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/50 rounded-t-2xl overflow-x-auto">
               <span className="text-xs font-bold text-gray-400 uppercase px-2 shrink-0">Markdown Editor</span>
+              {/* 内容字数统计 */}
+              <span className={`text-xs px-2 ${(formData.content?.length || 0) < 10 ? 'text-amber-500' : 'text-gray-400'}`}>
+                {formData.content?.length || 0} 字
+                {(formData.content?.length || 0) < 10 && ` (还需 ${10 - (formData.content?.length || 0)} 字)`}
+              </span>
               <div className="flex-grow"></div>
                {/* AI Tools */}
               <div className="flex gap-2 flex-wrap">
@@ -330,9 +470,20 @@ const Editor: React.FC<Props> = ({ initialData, onSave, onCancel }) => {
             <textarea 
               value={formData.content} 
               onChange={e => setFormData(prev => ({...prev, content: e.target.value}))}
+              onBlur={() => setTouched(prev => ({ ...prev, content: true }))}
               className="w-full flex-grow p-8 bg-transparent border-none focus:ring-0 outline-none font-mono text-sm leading-loose dark:text-gray-200 resize-none"
-              placeholder="#在此输入内容..."
+              placeholder="# 在此输入 Markdown 内容...&#10;&#10;提示：内容至少需要 10 个字符才能保存"
             />
+            
+            {/* 内容错误提示 */}
+            {touched.content && errors.content && (
+              <div className="absolute bottom-4 left-4 right-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg px-4 py-2 flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {errors.content}
+              </div>
+            )}
             
             {/* SEO Report Overlay */}
             {seoReport && (
@@ -435,26 +586,91 @@ const Editor: React.FC<Props> = ({ initialData, onSave, onCancel }) => {
              </div>
 
              <div>
-               <label className="label">知识标签</label>
-               <div className="flex gap-2 mb-2">
-                 <input 
-                   value={tagInput}
-                   onChange={e => setTagInput(e.target.value)}
-                   onKeyDown={e => e.key === 'Enter' && addTag()}
-                   className="input-field flex-1"
-                   placeholder="回车添加..."
-                 />
-                 <button onClick={addTag} className="px-3 bg-gray-100 dark:bg-slate-700 rounded-lg text-sm">+</button>
+               <label className="label">文章标签</label>
+               
+               {/* 预设标签选择区 */}
+               <div className="mb-3">
+                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">点击选择标签（可多选）：</p>
+                 {loadingTags ? (
+                   <div className="flex gap-2 flex-wrap">
+                     {[1,2,3,4,5].map(i => (
+                       <div key={i} className="h-7 w-16 bg-gray-200 dark:bg-slate-700 rounded-full animate-pulse"></div>
+                     ))}
+                   </div>
+                 ) : (
+                   <div className="flex flex-wrap gap-2">
+                     {availableTags.map(tag => {
+                       const isSelected = formData.tags?.includes(tag.name);
+                       return (
+                         <button
+                           key={tag.id}
+                           type="button"
+                           onClick={() => {
+                             if (isSelected) {
+                               setFormData(prev => ({...prev, tags: prev.tags?.filter(t => t !== tag.name)}));
+                             } else {
+                               setFormData(prev => ({...prev, tags: [...(prev.tags || []), tag.name]}));
+                             }
+                           }}
+                           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                             isSelected 
+                               ? 'text-white shadow-md scale-105' 
+                               : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:scale-105'
+                           }`}
+                           style={isSelected ? { backgroundColor: tag.color } : {}}
+                         >
+                           {isSelected && <span className="mr-1">✓</span>}
+                           {tag.name}
+                         </button>
+                       );
+                     })}
+                   </div>
+                 )}
                </div>
-               <div className="flex flex-wrap gap-2">
-                 {formData.tags?.map(tag => (
-                   <span key={tag} className="px-2 py-1 bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-300 rounded text-xs font-medium flex items-center gap-1 group cursor-default">
-                     {tag}
-                     <button onClick={() => setFormData(prev => ({...prev, tags: prev.tags?.filter(t => t !== tag)}))} className="hover:text-red-500 opacity-50 group-hover:opacity-100">×</button>
-                   </span>
-                 ))}
+
+               {/* 已选标签展示 */}
+               {formData.tags && formData.tags.length > 0 && (
+                 <div className="mb-3 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg">
+                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">已选择 {formData.tags.length} 个标签：</p>
+                   <div className="flex flex-wrap gap-2">
+                     {formData.tags.map(tagName => {
+                       const tagInfo = availableTags.find(t => t.name === tagName);
+                       return (
+                         <span 
+                           key={tagName} 
+                           className="px-2 py-1 rounded text-xs font-medium flex items-center gap-1 text-white"
+                           style={{ backgroundColor: tagInfo?.color || '#6b7280' }}
+                         >
+                           {tagName}
+                           <button 
+                             onClick={() => setFormData(prev => ({...prev, tags: prev.tags?.filter(t => t !== tagName)}))} 
+                             className="hover:bg-white/20 rounded-full w-4 h-4 flex items-center justify-center"
+                           >
+                             ×
+                           </button>
+                         </span>
+                       );
+                     })}
+                   </div>
+                 </div>
+               )}
+
+               {/* 自定义标签输入 */}
+               <div className="border-t border-gray-200 dark:border-slate-700 pt-3 mt-3">
+                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">或自定义标签：</p>
+                 <div className="flex gap-2">
+                   <input 
+                     value={tagInput}
+                     onChange={e => setTagInput(e.target.value)}
+                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                     className="input-field flex-1"
+                     placeholder="输入后按回车添加..."
+                   />
+                   <button onClick={addTag} className="px-3 bg-gray-100 dark:bg-slate-700 rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">+</button>
+                 </div>
                </div>
-               <p className="text-[10px] text-gray-400 mt-2">提示：添加标签后点击「标签大纲」可自动生成结构。</p>
+               
+               <p className="text-[10px] text-gray-400 mt-3">提示：添加标签后点击「标签大纲」可自动生成结构。</p>
              </div>
            </div>
 

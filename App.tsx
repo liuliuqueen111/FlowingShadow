@@ -5,9 +5,11 @@ import ArticleCard from './components/ArticleCard';
 import ArticleViewer from './components/ArticleViewer';
 import Editor from './components/Editor';
 import AuthModal from './components/AuthModal';
+import Pagination from './components/Pagination';
+import TagFilter from './components/TagFilter';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { fetchArticles, fetchArticleById, saveArticle, deleteArticle } from './services/backendSimulation';
-import { Article, SSRResponse } from './types';
+import { fetchArticles, fetchArticleById, saveArticle, deleteArticle, fetchTags } from './services/backendSimulation';
+import { Article, SSRResponse, Tag } from './types';
 
 // SSR 初始数据接口
 interface InitialData {
@@ -72,6 +74,15 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
   // Data State 
   const [articles, setArticles] = useState<Article[]>(initialData?.articles || []);
   const [currentArticle, setCurrentArticle] = useState<Article | null>(initialData?.article || null);
+  const [tags, setTags] = useState<Tag[]>([]);
+  
+  // Pagination & Filter State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalArticles, setTotalArticles] = useState(initialData?.total || 0);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [tagsLoading, setTagsLoading] = useState(true);
+  const pageSize = 9; // 每页显示文章数
   
   // UI State 
   const [loading, setLoading] = useState(!initialData?.articles);
@@ -80,7 +91,7 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
 
   // --- Views Controller ---
 
-  const loadList = useCallback(async (adminMode = false) => {
+  const loadList = useCallback(async (adminMode = false, page = 1, tag: string | null = null) => {
     setLoading(true);
     setSsrMetrics(null);
     setError(null);
@@ -89,15 +100,21 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
       
       if (adminMode && isAuthenticated) {
         // 获取用户的所有文章（包括草稿）
-        response = await fetch('/api/my/articles', {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(pageSize)
+        });
+        if (tag) params.append('tag', tag);
+        
+        response = await fetch(`/api/my/articles?${params}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
             'Content-Type': 'application/json'
           }
         }).then(res => res.json());
       } else {
-        //只获取已发布文章
-        response = await fetchArticles();
+        // 只获取已发布文章
+        response = await fetchArticles(page, pageSize, tag);
       }
       
       // Simulate Hybrid Rendering Delay if strategy says so
@@ -109,6 +126,8 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
         setError("系统正处于降级维护模式，暂无内容显示。");
       } else {
         setArticles(response.data?.articles || []);
+        setTotalArticles(response.data?.total || 0);
+        setTotalPages(response.data?.totalPages || Math.ceil((response.data?.total || 0) / pageSize));
       }
       setSsrMetrics(response);
     } catch (err) {
@@ -116,7 +135,20 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, pageSize]);
+
+  // 加载标签列表
+  const loadTags = useCallback(async () => {
+    setTagsLoading(true);
+    try {
+      const tagList = await fetchTags();
+      setTags(tagList);
+    } catch (err) {
+      console.error('加载标签失败:', err);
+    } finally {
+      setTagsLoading(false);
+    }
+  }, []);
 
   const loadDetail = useCallback(async (id: string) => {
     setLoading(true);
@@ -197,24 +229,48 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
     }
     setActiveTab(tab);
     setView('LIST');
+    // 重置分页和筛选状态
+    setCurrentPage(1);
+    setSelectedTag(null);
     // 切换标签页时重新加载列表
-    loadList(tab === 'ADMIN');
+    loadList(tab === 'ADMIN', 1, null);
+  };
+
+  // 处理页码变化
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    loadList(activeTab === 'ADMIN', page, selectedTag);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 处理标签筛选变化
+  const handleTagChange = (tagId: string | null) => {
+    setSelectedTag(tagId);
+    setCurrentPage(1); // 重置到第一页
+    loadList(activeTab === 'ADMIN', 1, tagId);
   };
 
   // Initial Load 
   useEffect(() => {
+    // 加载标签列表
+    loadTags();
+    
     if (!initialData?.articles || initialData.articles.length === 0) {
-      loadList();
+      loadList(false, 1, null);
+    } else {
+      // 如果有初始数据，设置分页信息
+      setTotalArticles(initialData.total || initialData.articles.length);
+      setTotalPages(Math.ceil((initialData.total || initialData.articles.length) / pageSize));
     }
-  }, [loadList, initialData]);
+  }, [loadList, loadTags, initialData, pageSize]);
 
-  // 当用户登录后，像点击“探索”一样从后端拉取最新的文章列表（避免刷新时仍显示本地回退数据）
+  // 当用户登录后，像点击"探索"一样从后端拉取最新的文章列表（避免刷新时仍显示本地回退数据）
   const prevAuthRef = React.useRef<boolean>(false);
   useEffect(() => {
     // 只有在从未认证 -> 已认证 的变更时触发
     if (!prevAuthRef.current && isAuthenticated) {
       // 主动从后端重新加载探索列表
-      loadList(false).catch(err => console.error('登录后刷新探索列表失败:', err));
+      loadList(false, 1, null).catch(err => console.error('登录后刷新探索列表失败:', err));
     }
     prevAuthRef.current = isAuthenticated;
   }, [isAuthenticated, loadList]);
@@ -222,8 +278,8 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
   // --- Render Helpers ---
 
   const renderBlogList = () => (
-    <div className="space-y-12 animate-slide-up">
-      <div className="text-center mb-16 relative">
+    <div className="space-y-8 animate-slide-up">
+      <div className="text-center mb-12 relative">
         <h1 className="text-5xl md:text-7xl font-serif font-black text-gray-900 dark:text-white mb-6 tracking-tight relative z-10">
           Flowing <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-accent-500">Shadow</span>
         </h1>
@@ -231,18 +287,50 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
           繁华之外，静观流影。
         </p>
       </div>
+
+      {/* 标签筛选 */}
+      <TagFilter
+        tags={tags}
+        selectedTag={selectedTag}
+        onTagChange={handleTagChange}
+        loading={tagsLoading}
+      />
+
+      {/* 文章统计 */}
+      {!loading && !error && (
+        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+          <span>
+            {selectedTag ? (
+              <>筛选结果: <span className="font-medium text-brand-600 dark:text-brand-400">{totalArticles}</span> 篇文章</>
+            ) : (
+              <>共 <span className="font-medium">{totalArticles}</span> 篇文章</>
+            )}
+          </span>
+          {selectedTag && (
+            <button
+              onClick={() => handleTagChange(null)}
+              className="text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              清除筛选
+            </button>
+          )}
+        </div>
+      )}
       
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-8 rounded-2xl text-center text-red-600 dark:text-red-400 animate-pulse">
           <h3 className="text-xl font-bold mb-2">系统服务降级中</h3>
           <p>{error}</p>
-          <button onClick={loadList} className="mt-4 px-4 py-2 bg-red-100 dark:bg-red-800 rounded-lg hover:bg-red-200 transition-colors">刷新重试</button>
+          <button onClick={() => loadList(false, currentPage, selectedTag)} className="mt-4 px-4 py-2 bg-red-100 dark:bg-red-800 rounded-lg hover:bg-red-200 transition-colors">刷新重试</button>
         </div>
       )}
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {[1, 2, 3].map(i => (
+          {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className="h-[400px] bg-white dark:bg-slate-800 rounded-2xl animate-pulse shadow-sm border border-gray-100 dark:border-white/5 flex flex-col p-6 space-y-4">
                <div className="h-48 bg-gray-200 dark:bg-slate-700 rounded-xl w-full"></div>
                <div className="h-6 bg-gray-200 dark:bg-slate-700 rounded w-3/4"></div>
@@ -251,16 +339,36 @@ const AppContent: React.FC<AppProps> = ({ initialData }) => {
             </div>
           ))}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
-          {articles.map(article => (
-            <ArticleCard 
-              key={article.id} 
-              article={article} 
-              onClick={loadDetail} 
-            />
-          ))}
+      ) : articles.length === 0 ? (
+        <div className="text-center py-20">
+          <div className="text-6xl mb-4">📭</div>
+          <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-2">
+            {selectedTag ? '没有找到相关文章' : '暂无文章'}
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400">
+            {selectedTag ? '试试选择其他标签或清除筛选条件' : '快来发布你的第一篇文章吧！'}
+          </p>
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {articles.map(article => (
+              <ArticleCard 
+                key={article.id} 
+                article={article} 
+                onClick={loadDetail} 
+              />
+            ))}
+          </div>
+          
+          {/* 分页组件 */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            disabled={loading}
+          />
+        </>
       )}
     </div>
   );

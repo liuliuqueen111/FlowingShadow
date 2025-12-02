@@ -135,15 +135,22 @@ class CacheService {
         }
 
         if (keysToDelete.length > 0) {
-          // 移除前缀后删除
+          // 注意：scanStream 返回的是完整键名（含前缀）
+          // 但 ioredis 配置了 keyPrefix 后，del 操作会自动添加前缀
+          // 所以需要移除前缀后再删除，让 ioredis 重新添加
           const cleanKeys = keysToDelete.map(k => k.replace(redisConfig.keyPrefix, ''));
-          await this.client.del(...cleanKeys);
-          console.log(`已失效 ${cleanKeys.length} 个缓存键`);
+          // 使用 pipeline 批量删除提高效率
+          const pipeline = this.client.pipeline();
+          cleanKeys.forEach(key => pipeline.del(key));
+          await pipeline.exec();
+          console.log(`已失效 ${cleanKeys.length} 个缓存键: ${cleanKeys.slice(0, 3).join(', ')}${cleanKeys.length > 3 ? '...' : ''}`);
+        } else {
+          console.log(`未找到匹配 "${pattern}" 的缓存键`);
         }
       }
       
       // 清理内存缓存中匹配的键
-      const regex = new RegExp(pattern.replace('*', '.*'));
+      const regex = new RegExp(pattern.replace(/\*/g, '.*'));
       for (const key of this.fallbackCache.keys()) {
         if (regex.test(key)) {
           this.fallbackCache.delete(key);
